@@ -34,8 +34,8 @@ public class Controller {
         return modelGame.getY();
     }
 
-    public void onLeftClick(int x, int y) {
-        //TODO checks
+    public void onClick(int x, int y) {
+
     }
 
 }

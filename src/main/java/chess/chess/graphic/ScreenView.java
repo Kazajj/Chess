@@ -3,13 +3,15 @@ package chess.chess.graphic;
 import chess.chess.controller.Controller;
 import chess.chess.element.GameButton;
 import chess.chess.element.GameListener;
+import chess.chess.model.PiecesEnum;
 
 import javax.swing.*;
 import java.awt.*;
 import java.awt.event.MouseEvent;
 import java.awt.event.MouseListener;
+import java.util.*;
 
-public class ScreenView implements MouseListener, GameListener {
+public class ScreenView implements GameListener {
 
     private JPanel panel;
     private JTextField status;
@@ -17,107 +19,129 @@ public class ScreenView implements MouseListener, GameListener {
     private JFrame frame;
     private GameButton[][] buttons;
     private final Controller controller;
+    Map<String, ImageIcon> piecesBlack = new HashMap<>();
+    Map<String, ImageIcon> piecesWhite = new HashMap<>();
 
     public ScreenView(Controller controller) {
         this.controller = controller;
     }
 
     public void generateGamePanel() {
-        frame = new JFrame();
-        frame.setVisible(true);
-        frame.setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE);
+        frame = new JFrame("Clickable Chessboard");
+        frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        frame.setResizable(false);
 
-        panel = new JPanel();
-        panel.setLayout(null);
-        panel.setLocation(0, 0);
-        panel.setPreferredSize(new Dimension(50 * controller.getGRID_SIZE(), 50 * controller.getGRID_SIZE()));
-        panel.setVisible(true);
+        buttons = new GameButton[8][8];
+        loadAndResizeImages();
+        createChessboard();
 
-        generatePlate();
-//        generateStatus();
-
-        frame.add(panel);
+        frame.add(createChessboardPanel());
         frame.pack();
+        frame.setVisible(true);
 
-        frame.repaint();
-    }
-
-    public void generatePlate() {
-        int colorCounter = 0;
-        buttons = new GameButton[controller.getGRID_SIZE()][controller.getGRID_SIZE()];
-        for (int i = 0; i < controller.getGRID_SIZE(); i++) {
-            for (int j = 0; j < controller.getGRID_SIZE(); j++) {
-                buttons[i][j] = new GameButton();
-                buttons[i][j].setCoordinateXandY(i, j);
-                buttons[i][j].setLocation(50 * i, 50 * j);
-                buttons[i][j].setVisible(true);
-                buttons[i][j].addMouseListener(this);
-                if ((colorCounter % 2 == 0)) {
-                    buttons[i][j].setBackground(Color.WHITE);
-                } else {
-                    buttons[i][j].setBackground(Color.BLACK);
-                }
-                panel.add(buttons[i][j]);
-                colorCounter++;
-            }
-            colorCounter++;
-        }
-    }
-
-    @Override
-    public void updateGraphic() {
-//        if (controller.isGameOver() || controller.isWin()) {
-//            gameoverGraphics();
-//            return;
-//        }
-        for (int i = 0; i < controller.getGRID_SIZE(); i++) {
-            for (int j = 0; j < controller.getGRID_SIZE(); j++) {
-//                if (controller.getBox(i, j).isFlag()) {
-//                    buttons[i][j].setBackground(Color.CYAN);
-//                } else {
-//                    buttons[i][j].setBackground(Color.LIGHT_GRAY);
-//                    isChecked(i, j);
-//            }
-            }
-        }
-//        status.setText(REMAINING_BOMBS + Integer.toString(controller.getStatusBombs()));
-        frame.repaint();
-    }
-
-    @Override
-    public void mouseClicked(MouseEvent e) {
-        GameButton gameButton = (GameButton) e.getSource();
-        int x = gameButton.getX();
-        int y = gameButton.getY();
-
-        if (SwingUtilities.isLeftMouseButton(e)) {
-            controller.onLeftClick(x, y);
-
-        }
-
-//        if (SwingUtilities.isRightMouseButton(e)) {
-//            controller.onRightClick(x, y);
-//        }
         updateGraphic();
     }
 
     @Override
-    public void mousePressed(MouseEvent e) {
+    public void updateGraphic() {
+        for (int row = 0; row < 8; row++) {
+            for (int col = 0; col < 8; col++) {
+                JButton square = buttons[row][col];
+                Color currentColor = square.getBackground();
+                Color newColor = (currentColor == Color.DARK_GRAY) ? Color.LIGHT_GRAY : Color.DARK_GRAY;
+                square.setBackground(newColor);
 
+                switch (row) {
+                    case 1 -> square.setIcon(piecesBlack.get(PiecesEnum.PEDONE.getStringValue()));
+                    case 0 -> setInitialPieces(square, piecesBlack, col);
+                    case 6 -> square.setIcon(piecesWhite.get(PiecesEnum.PEDONE.getStringValue()));
+                    case 7 -> setInitialPieces(square, piecesWhite, col);
+                }
+            }
+        }
     }
 
-    @Override
-    public void mouseReleased(MouseEvent e) {
-
+    private void setInitialPieces(JButton square, Map<String, ImageIcon> pieces, int col) {
+        switch (col) {
+            case 0, 7 -> square.setIcon(pieces.get(PiecesEnum.TORRE.getStringValue()));
+            case 1, 6 -> square.setIcon(pieces.get(PiecesEnum.CAVALLO.getStringValue()));
+            case 2, 5 -> square.setIcon(pieces.get(PiecesEnum.ALFIERE.getStringValue()));
+            case 3 -> square.setIcon(pieces.get(PiecesEnum.REGINA.getStringValue()));
+            case 4 -> square.setIcon(pieces.get(PiecesEnum.RE.getStringValue()));
+        }
     }
 
-    @Override
-    public void mouseEntered(MouseEvent e) {
-
+    private void createChessboard() {
+        for (int row = 0; row < 8; row++) {
+            for (int col = 0; col < 8; col++) {
+                GameButton square = new GameButton();
+                square.setPreferredSize(new Dimension(80, 80));
+                square.setBackground((row + col) % 2 == 0 ? Color.LIGHT_GRAY : Color.DARK_GRAY);
+                square.addMouseListener(new SquareClickListener(row, col));
+                buttons[row][col] = square;
+            }
+        }
     }
 
-    @Override
-    public void mouseExited(MouseEvent e) {
-
+    private void loadAndResizeImages() {
+        String localPath = "C:\\Users\\Enzo\\IdeaProjects\\chess\\src\\main\\resources\\pieces\\";
+        String ext = ".png";
+        for (PiecesEnum enumValue : PiecesEnum.values()) {
+            String piece = enumValue.getStringValue();
+            ImageIcon blackOriginal = new ImageIcon(localPath + piece + "Black" + ext);
+            ImageIcon blackResized = new ImageIcon(blackOriginal.getImage().getScaledInstance(50, 50, java.awt.Image.SCALE_SMOOTH));
+            ImageIcon whiteOriginal = new ImageIcon(localPath + piece + "White" + ext);
+            ImageIcon whiteResized = new ImageIcon(whiteOriginal.getImage().getScaledInstance(50, 50, java.awt.Image.SCALE_SMOOTH));
+            piecesBlack.put(piece, blackResized);
+            piecesWhite.put(piece, whiteResized);
+        }
     }
+
+    private JPanel createChessboardPanel() {
+        JPanel chessboardPanel = new JPanel(new GridLayout(8, 8));
+        for (int row = 0; row < 8; row++) {
+            for (int col = 0; col < 8; col++) {
+                chessboardPanel.add(buttons[row][col]);
+            }
+        }
+        return chessboardPanel;
+    }
+
+    private class SquareClickListener implements MouseListener {
+        private int row;
+        private int col;
+
+        SquareClickListener(int row, int col) {
+            this.row = row;
+            this.col = col;
+        }
+
+        @Override
+        public void mouseClicked(MouseEvent e) {
+            // Handle square click here
+            System.out.println("Clicked square at row " + row + " and column " + col + ". VALUE = " + String.valueOf(controller.getBox(row, col).getValue()));
+            updateGraphic();
+        }
+
+        @Override
+        public void mousePressed(MouseEvent e) {
+
+        }
+
+        @Override
+        public void mouseReleased(MouseEvent e) {
+
+        }
+
+        @Override
+        public void mouseEntered(MouseEvent e) {
+
+        }
+
+        @Override
+        public void mouseExited(MouseEvent e) {
+
+        }
+    }
+
 }
